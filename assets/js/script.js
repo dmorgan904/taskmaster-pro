@@ -13,6 +13,8 @@ var createTask = function(taskText, taskDate, taskList) {
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
 
+  //check due date
+  auditTask(taskLi);
 
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
@@ -45,6 +47,26 @@ var saveTasks = function() {
   localStorage.setItem("tasks", JSON.stringify(tasks));
 };
 
+var auditTask = function(taskEl) {
+  //get date from task element
+  var date = $(taskEl).find("span").text().trim();
+  console.log(date);
+ 
+  //convert to moment object at 5:00pm
+  var time = moment(date, "L").set("hour", 17);
+  console.log(time);
+
+  //remove any old classes from element
+  $(taskEl).removeClass("list-group-item-warning list-group-item-danger");
+  
+  //apply new class if task is near/over due date
+  if(moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger");
+  }
+  else if (Math.abs(moment().diff(time, "days")) <=2) {
+    $(taskEl).addClass("list-group-item-warning");
+  }
+};
 
 // modal was triggered
 $("#task-form-modal").on("show.bs.modal", function() {
@@ -89,7 +111,6 @@ var textInput = $("<textarea>")
   .addClass("form-control")
   .val(text);
   $(this).replaceWith(textInput);
-
   textInput.trigger("focus");
 });
 
@@ -134,20 +155,26 @@ $(".list-group").on("click", "span", function() {
     .attr("type", "text")
     .addClass("form-control")
     .val(date);
-
-  // swap out elements
   $(this).replaceWith(dateInput);
 
-  // automatically focus on new element
+  // enable jquery ui date picker
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function() {
+      // when calendar is closed, force a "change" event
+      $(this).trigger("change");
+    }
+  });
+
+  // automatically bring up the calendar
   dateInput.trigger("focus");
 });
 
 // value of due date was changed
-$(".list-group").on("blur", "input[type='text']", function() {
+$(".list-group").on("change", "input[type='text']", function() {
   // get current text
   var date = $(this)
-    .val()
-    .trim();
+    .val();
 
   // get the parent ul's id attribute
   var status = $(this)
@@ -169,8 +196,11 @@ $(".list-group").on("blur", "input[type='text']", function() {
     .addClass("badge badge-primary badge-pill")
     .text(date);
 
-  // replace input with span element
-  $(this).replaceWith(taskSpan);
+    // replace input with span element
+    $(this).replaceWith(taskSpan);
+
+    //Pass task's <li> element into auditTask() to check new due date
+   auditTask($(taskSpan).closest(".list-group-item"));
 });
 
 // remove all tasks
@@ -254,3 +284,8 @@ $("#trash").droppable({
     console.log(ui);
   }
 });
+
+$("#modalDueDate").datepicker({
+  minDate: 1
+});
+
